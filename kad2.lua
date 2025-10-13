@@ -5398,7 +5398,7 @@ spawn(function()
         tyrant = 'https://discord.com/api/webhooks/1232186689741651968/piyDhtZPKJlrNCZ5VmO-onVXfIcdj3a5nkhruC6eW82KPe7h_PZEIkb9slKrP8jHs7Np',
         mysticIsland = 'https://discord.com/api/webhooks/1345618938255380560/LHSLqtYLKd_G4zC4hBKNpy1N3sxC1PYloHrV1hGMy4jb3YT5ppX7ooCWHmeHdG2vyvW-',
         prehistoricIsland = 'https://discord.com/api/webhooks/1224005596265578617/YJYWRCYjWzEFezdjtbQ26GnpNIfCCKWgTKlqGoktXIC6zzhvwu-wyhTI3qcrZkpAV7LR',
-        fullMoon = 'https://discord.com/api/webhooks/1224740677590454418/FWQW7dvrKDaxFrD23E_zOeZFx8AsIuS749ybYHjCgGPKy5u954acqVQVwerb8GfML1_u',
+        fullMoon = 'https://discord.com/api/webhooks/1427321279396057113/-MdbqPszXiCOnuPvzdajHkI57vSDB1LYi-YbA1ucrDiQLXD1QJBcW2twzcZ_bZYljJwq',
     }
 
     local hasSentNotifications = {}
@@ -5435,9 +5435,9 @@ spawn(function()
             .. '/'
             .. tostring(Players.MaxPlayers or 12)
 
-        local title = isMirage and '🔔 Mizu Mirage Notify 🔔'
-            or '🔔 Mizu Boss Notify 🔔'
-        local fieldName = isMirage and '🏝️ Spawn :' or 'Boss Name :'
+        local title = isMirage and ' Mizu Mirage'
+            or ' Mizu Boss '
+        local fieldName = isMirage and 'Spawn :' or 'Boss Name :'
         local scriptCommand = 'game:GetService("ReplicatedStorage").__ServerBrowser:InvokeServer("teleport", "'
             .. jobId
             .. '")'
@@ -5453,7 +5453,7 @@ spawn(function()
                         inline = false,
                     },
                     {
-                        name = '⏰ Time Of Day :',
+                        name = 'Time Of Day :',
                         value = timeOfDay,
                         inline = true,
                     },
@@ -5474,7 +5474,7 @@ spawn(function()
                     },
                 },
                 footer = {
-                    text = '🔥 Mizu • Hôm nay lúc ' .. currentTime,
+                    text = 'Mizu • Hôm nay lúc ' .. currentTime,
                 },
             },
         }
@@ -5516,6 +5516,10 @@ spawn(function()
             sendWebhookNotification('ripIndra', 'rip_indra True Form')
         end
 
+        if ReplicatedStorage:FindFirstChild('Dough King') then
+            sendWebhookNotification('Dough King', 'Dough King')
+        end
+
         if
             ReplicatedStorage:FindFirstChild('Tyrant of the Skies')
             or (
@@ -5541,14 +5545,33 @@ spawn(function()
         end
     end
 
+    -- Hàm check Full Moon mới
+    function IsFullMoonActive()
+        local clockTime = Lighting.ClockTime
+        if clockTime >= 5 and clockTime < 18 then
+            return false
+        end
+        return true
+    end
+
+    function GetMoonPhase()
+        local moonphase = Lighting:GetAttribute('MoonPhase')
+        return moonphase or 0
+    end
+
     function checkFullMoon()
-        if
-            game.PlaceId == 7449423635
-            and Lighting:FindFirstChild('Sky')
-            and Lighting.Sky.MoonTextureId
-                == 'http://www.roblox.com/asset/?id=9709149431'
-        then
-            sendWebhookNotification('fullMoon', 'FullMoon', true)
+        if game.PlaceId ~= 7449423635 then
+            return
+        end
+
+        local moonPhase = GetMoonPhase()
+        local isActive = IsFullMoonActive()
+        
+        if moonPhase == 5 and isActive then
+            sendWebhookNotification('fullMoon', 'Full Moon (Phase: 5/5)', true)
+            print("🌕 Full Moon Active (Phase: 5/5)")
+        elseif moonPhase < 5 then
+        elseif moonPhase > 5 then
         end
     end
 
@@ -5556,7 +5579,7 @@ spawn(function()
         checkBosses()
         checkIslands()
         checkFullMoon()
-        task.wait(1)
+        task.wait(0.2)
     end
 end)
 
