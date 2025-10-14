@@ -5384,7 +5384,7 @@ task.delay(5, function()
         end)
     end
 end)
-spawn(function()
+task.spawn(function()
     local http = game:GetService('HttpService')
     local Players = game:GetService('Players')
     local ReplicatedStorage = game:GetService('ReplicatedStorage')
@@ -5395,6 +5395,7 @@ spawn(function()
         cursedCaptain = 'https://discord.com/api/webhooks/1224717998787657759/m1uBR-kudACuyPYZnaGQ9cfrklpy15SpfZI5duJWxVA_hSoMkBQ_YJ7EDQ36VHiJxwWd',
         darkbeard = 'https://discord.com/api/webhooks/1232186689741651968/piyDhtZPKJlrNCZ5VmO-onVXfIcdj3a5nkhruC6eW82KPe7h_PZEIkb9slKrP8jHs7Np',
         ripIndra = 'https://discord.com/api/webhooks/1232186689741651968/piyDhtZPKJlrNCZ5VmO-onVXfIcdj3a5nkhruC6eW82KPe7h_PZEIkb9slKrP8jHs7Np',
+        doughKing = 'https://discord.com/api/webhooks/1232186689741651968/piyDhtZPKJlrNCZ5VmO-onVXfIcdj3a5nkhruC6eW82KPe7h_PZEIkb9slKrP8jHs7Np',
         tyrant = 'https://discord.com/api/webhooks/1232186689741651968/piyDhtZPKJlrNCZ5VmO-onVXfIcdj3a5nkhruC6eW82KPe7h_PZEIkb9slKrP8jHs7Np',
         mysticIsland = 'https://discord.com/api/webhooks/1345618938255380560/LHSLqtYLKd_G4zC4hBKNpy1N3sxC1PYloHrV1hGMy4jb3YT5ppX7ooCWHmeHdG2vyvW-',
         prehistoricIsland = 'https://discord.com/api/webhooks/1224005596265578617/YJYWRCYjWzEFezdjtbQ26GnpNIfCCKWgTKlqGoktXIC6zzhvwu-wyhTI3qcrZkpAV7LR',
@@ -5402,6 +5403,21 @@ spawn(function()
     }
 
     local hasSentNotifications = {}
+    local lastMoonPhase = nil
+    local isInitialized = false
+    
+    local bossStatus = {
+        cursedCaptain = false,
+        darkbeard = false,
+        ripIndra = false,
+        doughKing = false,
+        tyrant = false,
+    }
+    
+    local islandStatus = {
+        mysticIsland = false,
+        prehistoricIsland = false,
+    }
 
     function getCurrentTime()
         return os.date('%H:%M CH')
@@ -5422,7 +5438,23 @@ spawn(function()
         return string.format('%02d:%02d:%02d', hours, minutes, seconds)
     end
 
-    function sendWebhookNotification(webhookType, eventName, isMirage)
+    function getFullMoonTimeRemaining()
+        local clockTime = Lighting.ClockTime
+        local gameHoursRemaining = 0
+        
+        if clockTime >= 18 then
+            gameHoursRemaining = (24 - clockTime) + 5
+        elseif clockTime < 5 then
+            gameHoursRemaining = 5 - clockTime
+        end
+        
+        local realMinutes = math.floor(gameHoursRemaining)
+        local realSeconds = math.floor((gameHoursRemaining % 1) * 60)
+        
+        return string.format('%dm %ds', realMinutes, realSeconds)
+    end
+
+    function sendWebhookNotification(webhookType, eventName, isMirage, isFullMoon)
         local url = WEBHOOK_URLS[webhookType]
         if not url or hasSentNotifications[webhookType] then
             return
@@ -5431,132 +5463,142 @@ spawn(function()
         local currentTime = getCurrentTime()
         local timeOfDay = getTimeOfDay()
         local jobId = game.JobId
-        local playerCount = tostring(Players.NumPlayers)
-            .. '/'
-            .. tostring(Players.MaxPlayers or 12)
+        local playerCount = tostring(Players.NumPlayers) .. '/' .. tostring(Players.MaxPlayers or 12)
 
-        local title = isMirage and ' Mizu Mirage'
-            or ' Mizu Boss '
-        local fieldName = isMirage and 'Spawn :' or 'Boss Name :'
-        local scriptCommand = 'game:GetService("ReplicatedStorage").__ServerBrowser:InvokeServer("teleport", "'
-            .. jobId
-            .. '")'
+        local title, fieldName
+        
+        if isFullMoon then
+            title = 'Mizu Full Moon'
+            fieldName = 'Event :'
+        elseif isMirage then
+            title = 'Mizu Mirage'
+            fieldName = 'Spawn :'
+        else
+            title = 'Mizu Boss'
+            fieldName = 'Boss Name :'
+        end
+
+        local scriptCommand = 'game:GetService("ReplicatedStorage").__ServerBrowser:InvokeServer("teleport", "' .. jobId .. '")'
+
+        local fields = {
+            { name = fieldName, value = eventName, inline = false },
+            { name = 'Time Of Day :', value = timeOfDay, inline = true },
+            { name = 'Players :', value = playerCount, inline = true },
+        }
+
+        if isFullMoon then
+            table.insert(fields, { name = 'Time Remaining :', value = getFullMoonTimeRemaining(), inline = false })
+        end
+
+        table.insert(fields, { name = 'Job-Id :', value = jobId, inline = false })
+        table.insert(fields, { name = 'Script :', value = scriptCommand, inline = false })
 
         local embed = {
             {
                 title = title,
                 color = tonumber('1cff1a', 16),
-                fields = {
-                    {
-                        name = fieldName,
-                        value = eventName,
-                        inline = false,
-                    },
-                    {
-                        name = 'Time Of Day :',
-                        value = timeOfDay,
-                        inline = true,
-                    },
-                    {
-                        name = 'Players :',
-                        value = playerCount,
-                        inline = true,
-                    },
-                    {
-                        name = 'Job-Id :',
-                        value = jobId,
-                        inline = false,
-                    },
-                    {
-                        name = 'Script :',
-                        value = scriptCommand,
-                        inline = false,
-                    },
-                },
-                footer = {
-                    text = 'Mizu • Hôm nay lúc ' .. currentTime,
-                },
+                fields = fields,
+                footer = { text = 'Mizu • Hôm nay lúc ' .. currentTime },
             },
         }
 
-        local payload = http:JSONEncode({
-            embeds = embed,
-        })
-
+        local payload = http:JSONEncode({ embeds = embed })
         local headers = { ['Content-Type'] = 'application/json' }
         local requestFunction = http_request or request or syn.request
 
         local success, response = pcall(function()
-            return requestFunction({
-                Url = url,
-                Method = 'POST',
-                Headers = headers,
-                Body = payload,
-            })
+            return requestFunction({ Url = url, Method = 'POST', Headers = headers, Body = payload })
         end)
 
-        if
-            success
-            and (response.StatusCode == 200 or response.StatusCode == 204)
-        then
+        if success and (response.StatusCode == 200 or response.StatusCode == 204) then
             hasSentNotifications[webhookType] = true
+            print("[Webhook] Sent: " .. eventName)
         end
     end
 
     function checkBosses()
-        if ReplicatedStorage:FindFirstChild('Cursed Captain') then
+        local hasCursed = ReplicatedStorage:FindFirstChild('Cursed Captain') ~= nil
+        if hasCursed and not bossStatus.cursedCaptain then
             sendWebhookNotification('cursedCaptain', 'Cursed Captain')
+            bossStatus.cursedCaptain = true
+        elseif not hasCursed and bossStatus.cursedCaptain then
+            bossStatus.cursedCaptain = false
+            hasSentNotifications['cursedCaptain'] = false
         end
 
-        if ReplicatedStorage:FindFirstChild('Darkbeard') then
+        local hasDark = ReplicatedStorage:FindFirstChild('Darkbeard') ~= nil
+        if hasDark and not bossStatus.darkbeard then
             sendWebhookNotification('darkbeard', 'Darkbeard')
+            bossStatus.darkbeard = true
+        elseif not hasDark and bossStatus.darkbeard then
+            bossStatus.darkbeard = false
+            hasSentNotifications['darkbeard'] = false
         end
 
-        if ReplicatedStorage:FindFirstChild('rip_indra True Form') then
+        local hasIndra = ReplicatedStorage:FindFirstChild('rip_indra True Form') ~= nil
+        if hasIndra and not bossStatus.ripIndra then
             sendWebhookNotification('ripIndra', 'rip_indra True Form')
+            bossStatus.ripIndra = true
+        elseif not hasIndra and bossStatus.ripIndra then
+            bossStatus.ripIndra = false
+            hasSentNotifications['ripIndra'] = false
         end
 
-        if ReplicatedStorage:FindFirstChild('Dough King') then
-            sendWebhookNotification('Dough King', 'Dough King')
+        local hasDough = ReplicatedStorage:FindFirstChild('Dough King') ~= nil
+        if hasDough and not bossStatus.doughKing then
+            sendWebhookNotification('doughKing', 'Dough King')
+            bossStatus.doughKing = true
+        elseif not hasDough and bossStatus.doughKing then
+            bossStatus.doughKing = false
+            hasSentNotifications['doughKing'] = false
         end
 
-        if
-            ReplicatedStorage:FindFirstChild('Tyrant of the Skies')
-            or (
-                Workspace:FindFirstChild('Enemies')
-                and Workspace.Enemies:FindFirstChild('Tyrant of the Skies')
-            )
-        then
+        local hasTyrant = ReplicatedStorage:FindFirstChild('Tyrant of the Skies') ~= nil or (Workspace:FindFirstChild('Enemies') and Workspace.Enemies:FindFirstChild('Tyrant of the Skies') ~= nil)
+        if hasTyrant and not bossStatus.tyrant then
             sendWebhookNotification('tyrant', 'Tyrant of the Skies')
+            bossStatus.tyrant = true
+        elseif not hasTyrant and bossStatus.tyrant then
+            bossStatus.tyrant = false
+            hasSentNotifications['tyrant'] = false
         end
     end
 
     function checkIslands()
-        if Workspace.Map:FindFirstChild('MysticIsland') then
+        local hasMystic = Workspace.Map:FindFirstChild('MysticIsland') ~= nil
+        if hasMystic and not islandStatus.mysticIsland then
             sendWebhookNotification('mysticIsland', 'Mystic Island', true)
+            islandStatus.mysticIsland = true
+        elseif not hasMystic and islandStatus.mysticIsland then
+            islandStatus.mysticIsland = false
+            hasSentNotifications['mysticIsland'] = false
         end
 
-        if Workspace.Map:FindFirstChild('PrehistoricIsland') then
-            sendWebhookNotification(
-                'prehistoricIsland',
-                'Prehistoric Island',
-                true
-            )
+        local hasPrehistoric = Workspace.Map:FindFirstChild('PrehistoricIsland') ~= nil
+        if hasPrehistoric and not islandStatus.prehistoricIsland then
+            sendWebhookNotification('prehistoricIsland', 'Prehistoric Island', true)
+            islandStatus.prehistoricIsland = true
+        elseif not hasPrehistoric and islandStatus.prehistoricIsland then
+            islandStatus.prehistoricIsland = false
+            hasSentNotifications['prehistoricIsland'] = false
         end
-    end
-
-    -- Hàm check Full Moon mới
-    function IsFullMoonActive()
-        local clockTime = Lighting.ClockTime
-        if clockTime >= 5 and clockTime < 18 then
-            return false
-        end
-        return true
     end
 
     function GetMoonPhase()
-        local moonphase = Lighting:GetAttribute('MoonPhase')
-        return moonphase or 0
+        local success, moonphase = pcall(function()
+            return Lighting:GetAttribute('MoonPhase')
+        end)
+        if success and moonphase then
+            return moonphase
+        end
+        return 0
+    end
+
+    function IsFullMoonActive()
+        local clockTime = Lighting.ClockTime
+        if clockTime >= 18 or clockTime < 5 then
+            return true
+        end
+        return false
     end
 
     function checkFullMoon()
@@ -5564,22 +5606,40 @@ spawn(function()
             return
         end
 
-        local moonPhase = GetMoonPhase()
+        local currentMoonPhase = GetMoonPhase()
         local isActive = IsFullMoonActive()
         
-        if moonPhase == 5 and isActive then
-            sendWebhookNotification('fullMoon', 'Full Moon (Phase: 5/5)', true)
-            print("🌕 Full Moon Active (Phase: 5/5)")
-        elseif moonPhase < 5 then
-        elseif moonPhase > 5 then
+        if not isInitialized then
+            lastMoonPhase = currentMoonPhase
+            isInitialized = true
+            
+            if currentMoonPhase == 5 and isActive then
+                sendWebhookNotification('fullMoon', 'Full Moon (Phase: 5/5)', false, true)
+            elseif currentMoonPhase == 5 and not isActive then
+                hasSentNotifications['fullMoon'] = true
+            end
+            return
         end
+        
+        if lastMoonPhase ~= 5 and currentMoonPhase == 5 and isActive then
+            sendWebhookNotification('fullMoon', 'Full Moon (Phase: 5/5)', false, true)
+        end
+        
+        if lastMoonPhase == 5 and currentMoonPhase ~= 5 then
+            hasSentNotifications['fullMoon'] = false
+        end
+        
+        lastMoonPhase = currentMoonPhase
     end
-
+    
+    
     while true do
-        checkBosses()
-        checkIslands()
-        checkFullMoon()
-        task.wait(0.2)
+        pcall(function()
+            checkBosses()
+            checkIslands()
+            checkFullMoon()
+        end)
+        task.wait(1)
     end
 end)
 
